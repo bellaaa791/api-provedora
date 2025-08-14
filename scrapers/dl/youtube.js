@@ -1,4 +1,4 @@
-const { ytmp3, ytmp4 } = require('@kelvdra/scraper');
+const { ytmp3, ytmp4 } = "oi"
 
 async function baixarAudio(link) {
   try {
