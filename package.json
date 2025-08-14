@@ -2,7 +2,6 @@
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
     "@hapi/boom": "^10.0.1",
-    "@kelvdra/scraper": "^1.0.34",
     "@whiskeysockets/baileys": "^6.7.18",
     "axios": "^1.11.0",
     "baileys-pro": "^0.0.5",
