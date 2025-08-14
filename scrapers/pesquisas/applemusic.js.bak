@@ -1,0 +1,63 @@
+const axios = require("axios");
+const cheerio = require("cheerio");
+
+const AppleMusic = {
+search: async function (q) {
+return new Promise(async (resolve, reject) => {
+try {
+const response = await axios.get("https://music.apple.com/id/search?term=" + encodeURIComponent(q));
+const $ = cheerio.load(response.data);
+let array = [];
+
+$('span.top-search-list-lockup__primary').text() => {
+let title = $(el)
+.find(".track-lockup__content li")
+.eq(0)
+.find("a")
+.text()
+.trim();
+let album = $(el)
+.find(".track-lockup__content li")
+.eq(0)
+.find("a")
+.attr("href");
+let crop = album.split("/").pop();
+let song = album.replace(crop, "").trim().replace("/album/", "/song/").trim() + album.split("i=")[1];
+let image = $(el)
+.find(".svelte-3e3mdo source")
+.eq(1)
+.attr("srcset")
+.split(",")[1]
+.split(" ")[0]
+.trim();
+let artist = {
+name: $(el)
+.find(".track-lockup__content li")
+.eq(1)
+.find("a")
+.text()
+.trim(),
+url: $(el)
+.find(".track-lockup__content li")
+.eq(1)
+.find("a")
+.attr("href"),
+};
+
+array.push({
+title,
+image,
+song,
+artist,
+});
+});
+
+resolve(array);
+} catch (error) {
+reject(error);
+}
+});
+}
+};
+
+module.exports = { AppleMusic }

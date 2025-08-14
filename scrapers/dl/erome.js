@@ -1,0 +1,77 @@
+const axios = require('axios');
+const cheerio = require('cheerio');
+const urlModule = require('url'); // Para lidar com URLs
+
+async function scrapeErome(url) {
+    try {
+
+
+        const { data } = await axios.get(url);
+        const $ = cheerio.load(data);
+
+        // Thumbnail do primeiro post
+        const thumbnail = $('.vjs-poster').attr('style')?.match(/url\("(.*?)"\)/)?.[1] || null;
+
+        // Verifica se tem vídeo
+        const hasVideo = $('.vjs-icon-placeholder').length > 0;
+
+        // Captura todos os links de vídeo
+        const videoUrls = [];
+        $('video source').each((i, el) => {
+            videoUrls.push($(el).attr('src'));
+        });
+
+        // Duração do vídeo (se houver)
+        const duration = $('.vjs-duration-display').text().trim() || null;
+
+        // Hashtags
+        const hashtags = [];
+        $('a[href*="search?q="]').each((i, el) => {
+            hashtags.push($(el).text().trim());
+        });
+
+        // Comentários
+        const comments = [];
+        $('.comment-text').each((i, el) => {
+            comments.push($(el).text().trim());
+        });
+
+        // Quantidade de fotos
+        const photoCount = $('.album-images i.fa-camera').parent().text().trim().replace(/\D/g, '') || 0;
+
+        // Links das fotos
+        const photos = [];
+        
+        $('img.img-front').each((i, el) => {
+            // Captura o valor de data-src, caso esteja presente, ou src
+            let src = $(el).attr('data-src') || $(el).attr('src');
+            
+            // Verifica se o src é uma URL Base64 ou se precisa ser completada com o domínio base
+            if (src && !src.startsWith('data:image')) {
+                if (!src.startsWith('http')) {
+                    const parsedUrl = urlModule.parse(url);
+                    src = parsedUrl.protocol + '//' + parsedUrl.host + src;
+                }
+            }
+            photos.push(src);
+        });
+
+        return {
+            thumbnail,
+            videos: videoUrls, // Agora retorna uma lista com todos os vídeos
+            hashtags,
+ comentarios: comments,
+fotos: photos
+        };
+return data
+    } catch (error) {
+        console.error("Erro ao fazer scraping:", error.message);
+        return null;
+    }
+}
+
+// Teste com o link fornecido
+//const url = "https://www.erome.com/a/8jl4PSe7";
+//scrapeErome(url).then(data => console.log(data));
+
+module.exports = { scrapeErome }

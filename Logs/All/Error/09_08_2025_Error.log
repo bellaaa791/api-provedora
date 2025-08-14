@@ -1,0 +1,12 @@
+[ 09/08/2025-19:04:59 ] [ _.All._ ] ERRO NA ROTA /pesquisas/tekmods
+
+ReferenceError: getmodsapscrapeTekmodsk is not defined
+[ 09/08/2025-19:06:14 ] [ _.All._ ] ERRO NA ROTA /pesquisas/tekmods
+
+ReferenceError: scrapeTekmodsk is not defined
+[ 09/08/2025-19:06:15 ] [ _.All._ ] ERRO NA ROTA /pesquisas/tekmods
+
+ReferenceError: scrapeTekmodsk is not defined
+[ 09/08/2025-19:39:14 ] [ _.All._ ] ERRO NA ROTA /canvas/ping2
+
+ReferenceError: ping2 is not defined

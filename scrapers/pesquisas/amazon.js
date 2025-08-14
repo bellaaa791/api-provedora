@@ -1,0 +1,143 @@
+const axios = require('axios');
+const cheerio = require('cheerio');
+
+async function buscar_amazon(query) {
+  const url = 'https://www.amazon.com.br/s?k=' + query;
+  try {
+//    console.log('Iniciando scraping...');
+    const { data } = await axios.get(url, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0 Win64 x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+        'Accept-Language': 'pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7',
+      },
+    });
+
+    const $ = cheerio.load(data);
+ //   console.log('Dados carregados com sucesso. Extraindo informações...');
+    const coisas = [];
+
+    $('.s-result-item').each((index, element) => {
+      try {
+        const $element = $(element);
+
+        // Extração da imagem com verificação
+        const imagemElement = $element.find('img.s-image');
+        const imagem = imagemElement.length > 0 ? imagemElement.attr('src') : 'não encontrado';
+
+        // Extração do nome com verificação
+        const nomeElement = $element.find('.a-size-base-plus.a-color-base.a-text-normal');
+        const nome = nomeElement.length > 0 ? nomeElement.text().trim() : 'não encontrado';
+
+        // Extração do preço atual formatado
+        const precoAtualElement = $element.find('.a-price[data-a-size="xl"] .a-offscreen');
+        const precoAtualFormatado = precoAtualElement.length > 0 ? precoAtualElement.text().trim() : 'não encontrado';
+        const preco = precoAtualFormatado !== 'não encontrado' ? precoAtualFormatado.replace('R$&nbsp;', '') : 'não encontrado';
+
+        // Extração do preço anterior formatado (se existir)
+        const precoAnteriorElement = $element.find('.a-price[data-a-size="b"] .a-offscreen');
+        const precoAnteriorFormatado = precoAnteriorElement.length > 0 ? precoAnteriorElement.text().trim() : 'não encontrado';
+
+        // Extração da informação de desconto à vista (se existir)
+        const descontoElement = $element.find('.a-size-base.a-color-secondary:contains("Desconto à vista")');
+        const descontoInfo = descontoElement.length > 0 ? descontoElement.text().trim() : 'não encontrado';
+
+        // Extração da informação de parcelamento sem juros (se existir) - SELETOR ESPECÍFICO
+        let parcelamentoInfo = 'não encontrado';
+        const parcelamentoRow = $element.find('.a-row:has(.a-size-base.a-color-secondary:contains("em até"))');
+        if (parcelamentoRow.length > 0) {
+          const parte1Element = parcelamentoRow.find('.a-size-base.a-color-secondary:first-child');
+          const precoParcelaElement = parcelamentoRow.find('.a-price[data-a-size="b"] .a-offscreen');
+          const parte3Element = parcelamentoRow.find('.a-size-base.a-color-secondary:last-child');
+
+          const parte1 = parte1Element.length > 0 ? parte1Element.text().trim() : '';
+          const precoParcela = precoParcelaElement.length > 0 ? precoParcelaElement.text().trim() : '';
+          const parte3 = parte3Element.length > 0 ? parte3Element.text().trim() : '';
+
+          if (parte1.startsWith('em até') && precoParcela && parte3 === 'sem juros') {
+            parcelamentoInfo = `${parte1} ${precoParcela} ${parte3}`;
+          }
+        }
+
+        // Extração da informação de "Mais de X mil compras" (se existir)
+        const maisComprasElement = $element.find('.a-size-base.a-color-secondary:contains("Mais de")');
+        const maisComprasMesPassado = maisComprasElement.length > 0 ? maisComprasElement.text().trim() : 'não encontrado';
+
+        // Extração do link com verificação
+        const linkHref = $element.find('.a-link-normal.s-no-hover').attr('href');
+        const link = linkHref ? 'https://www.amazon.com.br' + linkHref : 'não encontrado';
+
+        // Extração da descrição com múltiplas verificações E FORMATAÇÃO (MAIS ABRANGENTE)
+        let descricao = $element.find('.a-row.a-size-base.a-color-secondary').text();
+        if (!descricao) {
+          descricao = $element.find('.a-text-bold + span').text();
+        }
+        if (!descricao) {
+          descricao = $element.find('.a-row.a-size-small span').text();
+        }
+        if (!descricao) {
+          descricao = $element.find('.a-size-base.a-color-base').text();
+        }
+        if (!descricao) {
+          descricao = $element.find('.a-size-medium.a-color-base.a-text-normal').text();
+        }
+        descricao = descricao ? descricao.trim().replace(/\s+/g, ' ') : 'não encontrado';
+
+        // Extração da avaliação (span alt) com verificação
+        const avaliacaoSlot = $element.find('i[data-cy="reviews-ratings-slot"]');
+        let avaliacaoSpanAlt = 'não encontrado';
+        if (avaliacaoSlot.length > 0) {
+          avaliacaoSpanAlt = avaliacaoSlot.find('span.a-icon-alt').prop('outerHTML')?.trim() || 'não encontrado';
+        }
+
+        // Extração do texto simples da avaliação com verificação
+        let avaliacaoTextoSimples = 'não encontrado';
+        if (avaliacaoSlot.length > 0) {
+          avaliacaoTextoSimples = avaliacaoSlot.find('span.a-icon-alt').text().trim() || 'não encontrado';
+        }
+
+        // Extração da avaliação (link completo) com verificação
+        const avaliacaoLinkCompletoElement = $element.find('span.a-declarative[data-cy="reviews-ratings-slot"]');
+        const avaliacaoLinkCompleto = avaliacaoLinkCompletoElement.length > 0 ? avaliacaoLinkCompletoElement.prop('outerHTML')?.trim() : 'não encontrado';
+
+        // Extração do número da avaliação com verificação
+        const avaliacaoNumero = avaliacaoTextoSimples !== 'não encontrado' ? parseFloat(avaliacaoTextoSimples.split(' de ')[0].replace(',', '.')) : null;
+
+        // Extração do número total de avaliações com verificação
+        const numeroAvaliacoesTextoElement = $element.find('a.a-link-normal.s-underline-text.s-underline-link-text.s-link-style span.a-size-base.s-underline-text');
+        const numeroAvaliacoesTexto = numeroAvaliacoesTextoElement.length > 0 ? numeroAvaliacoesTextoElement.text().trim() : 'não encontrado';
+
+        // Conversão do número total de avaliações com verificação
+        const numeroAvaliacoes = numeroAvaliacoesTexto !== 'não encontrado' ? parseInt(numeroAvaliacoesTexto.replace('.', '')) : null;
+
+        if (nome !== 'não encontrado' && precoAtualFormatado !== 'não encontrado' && link !== 'não encontrado') {
+          coisas.push({
+            nome,
+            imagem,
+            preco,
+            //precoAtualFormatado,
+            preco_anterior: precoAnteriorFormatado,
+            desconto_informacoes: descontoInfo,
+            parcelamento_informacoes: parcelamentoInfo,
+            info_compras: maisComprasMesPassado,
+            link,
+            descricao,            
+            avaliacao_texto: avaliacaoTextoSimples,
+            avaliacaoNumero,
+            avaliacoes_total: numeroAvaliacoes,
+          });
+        }
+      } catch (error) {
+        console.error('Erro ao processar item:', error);
+      }
+    });
+
+//    console.log('Finalizado!');
+//    console.log(coisas);
+    return coisas;
+  } catch (error) {
+    console.error('Erro ao obter dados:', error.message);
+    throw new Error('Erro no scraper');
+  }
+}
+
+module.exports = { buscar_amazon } 
